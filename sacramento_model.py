@@ -467,59 +467,246 @@ def main():
     print("\nInput Data Summary:")
     print(f"  Simulation period: {n_days} days")
     print(f"  Total precipitation: {np.sum(P):.2f} mm")
-    print(f"  Total potential ET: {np.sum(PET):.2f} mm")
+def create_sacramento_plots(model, P, PET, results, save_dir="figures"):
+    """
+    Create comprehensive visualization plots for Sacramento model results.
+    """
+    # Ensure save directory exists
+    os.makedirs(save_dir, exist_ok=True)
     
-    # Initialize model
-    model = SacramentoModel(
-        UZTWM=80.0, UZFWM=40.0,
-        LZTWM=150.0, LZFPM=100.0, LZFSM=50.0,
-        UZK=0.3, LZPK=0.01, LZSK=0.05,
-        ZPERC=40.0, REXP=2.0,
-        PCTIM=0.01, ADIMP=0.0, PFREE=0.1
-    )
+    # Set style
+    plt.style.use('seaborn-v0_8-darkgrid')
+    sns.set_palette("husl")
     
-    print("\nModel Parameters:")
-    print("  Upper Zone:")
-    print(f"    UZTWM: {model.UZTWM} mm")
-    print(f"    UZFWM: {model.UZFWM} mm")
-    print("  Lower Zone:")
-    print(f"    LZTWM: {model.LZTWM} mm")
-    print(f"    LZFPM: {model.LZFPM} mm")
-    print(f"    LZFSM: {model.LZFSM} mm")
+    # Create date index
+    n_days = len(P)
+    dates = [datetime(2020, 1, 1) + timedelta(days=i) for i in range(n_days)]
     
-    # Run model
-    print("\nRunning simulation...")
-    results = model.run(P, PET)
+    # Figure 1: Sacramento Model Comprehensive Analysis
+    fig, axes = plt.subplots(4, 1, figsize=(15, 12), sharex=True)
+    fig.suptitle('Sacramento (SAC-SMA) Model - Comprehensive Analysis', fontsize=16, fontweight='bold')
     
-    print("\nSimulation Results:")
-    print(f"  Total discharge: {np.sum(results['Q']):.2f} mm")
-    print(f"  Runoff coefficient: {np.sum(results['Q']) / np.sum(P):.3f}")
-    print(f"  Total ET: {np.sum(results['E']):.2f} mm")
+    # Precipitation (inverted)
+    axes[0].bar(dates, P, color='steelblue', alpha=0.7, width=1)
+    axes[0].set_ylabel('Precipitation\n(mm/day)', fontweight='bold')
+    axes[0].invert_yaxis()
+    axes[0].grid(True, alpha=0.3)
+    axes[0].set_ylim(max(P) * 1.1, 0)
     
-    print("\nRunoff Components:")
-    print(f"  Surface runoff: {np.sum(results['surface']):.2f} mm "
-          f"({np.sum(results['surface'])/np.sum(results['Q'])*100:.1f}%)")
-    print(f"  Interflow: {np.sum(results['interflow']):.2f} mm "
-          f"({np.sum(results['interflow'])/np.sum(results['Q'])*100:.1f}%)")
-    print(f"  Primary baseflow: {np.sum(results['baseflow_primary']):.2f} mm "
-          f"({np.sum(results['baseflow_primary'])/np.sum(results['Q'])*100:.1f}%)")
-    print(f"  Supplementary baseflow: {np.sum(results['baseflow_supplementary']):.2f} mm "
-          f"({np.sum(results['baseflow_supplementary'])/np.sum(results['Q'])*100:.1f}%)")
+    # Discharge components
+    axes[1].plot(dates, results['Q'], color='blue', linewidth=2, label='Total Discharge')
+    axes[1].plot(dates, results['surface'], color='red', linewidth=1.5, label='Surface Runoff', alpha=0.8)
+    axes[1].plot(dates, results['interflow'], color='green', linewidth=1.5, label='Interflow', alpha=0.8)
+    axes[1].plot(dates, results['baseflow_primary'], color='purple', linewidth=1.5, label='Primary Baseflow', alpha=0.8)
+    axes[1].plot(dates, results['baseflow_supplementary'], color='orange', linewidth=1.5, label='Supp. Baseflow', alpha=0.8)
+    axes[1].set_ylabel('Discharge\n(mm/day)', fontweight='bold')
+    axes[1].grid(True, alpha=0.3)
+    axes[1].legend()
     
-    # Display first 10 days
-    print("\nFirst 10 Days of Simulation:")
-    print("Day |   P    |  PET   |   Q    |   E    | UZTWC  | LZTWC  |")
-    print("----|--------|--------|--------|--------|--------|--------|")
-    for i in range(10):
-        print(f"{i+1:3d} | {P[i]:6.2f} | {PET[i]:6.2f} | {results['Q'][i]:6.2f} | "
-              f"{results['E'][i]:6.2f} | {results['UZTWC'][i]:6.2f} | "
-              f"{results['LZTWC'][i]:6.2f} |")
+    # Soil moisture - upper zone
+    axes[2].plot(dates, results['UZTWC'], color='brown', linewidth=2, label='Upper Zone Tension Water')
+    axes[2].plot(dates, results['UZFWC'], color='green', linewidth=2, label='Upper Zone Free Water')
+    axes[2].axhline(y=model.UZTWM, color='red', linestyle='--', alpha=0.7, label=f'UZTWM={model.UZTWM}mm')
+    axes[2].axhline(y=model.UZFWM, color='green', linestyle='--', alpha=0.7, label=f'UZFWM={model.UZFWM}mm')
+    axes[2].fill_between(dates, results['UZTWC'], alpha=0.2, color='brown')
+    axes[2].set_ylabel('Upper Zone\n(mm)', fontweight='bold')
+    axes[2].grid(True, alpha=0.3)
+    axes[2].legend()
     
-    print("\n" + "=" * 80)
-    print("Simulation completed successfully!")
+    # Soil moisture - lower zone
+    axes[3].plot(dates, results['LZTWC'], color='blue', linewidth=2, label='Lower Zone Tension Water')
+    axes[3].plot(dates, results['LZFPC'], color='purple', linewidth=2, label='Lower Zone Primary Free Water')
+    axes[3].plot(dates, results['LZFSC'], color='orange', linewidth=2, label='Lower Zone Supp. Free Water')
+    axes[3].axhline(y=model.LZTWM, color='blue', linestyle='--', alpha=0.7, label=f'LZTWM={model.LZTWM}mm')
+    axes[3].fill_between(dates, results['LZTWC'], alpha=0.2, color='blue')
+    axes[3].set_ylabel('Lower Zone\n(mm)', fontweight='bold')
+    axes[3].set_xlabel('Date', fontweight='bold')
+    axes[3].grid(True, alpha=0.3)
+    axes[3].legend()
+    
+    # Format x-axis
+    for ax in axes:
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, 'sacramento_comprehensive.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    print(f"✓ Sacramento model visualization plot saved to '{save_dir}' directory")
+    print("  Generated files:")
+    print("  - sacramento_comprehensive.png")
+
+
+def main():
+    """
+    Enhanced demonstration of Sacramento Soil Moisture Accounting Model.
+    """
+    print("=" * 80)
+    print("Sacramento Soil Moisture Accounting Model (SAC-SMA) - Enhanced Demonstration")
+    print("Continuous Soil Moisture Accounting for River Forecasting")
     print("=" * 80)
     
-    return results
+    # Set random seed for reproducibility
+    np.random.seed(42)
+    
+    # Generate enhanced synthetic data (2 years)
+    n_days = 730
+    
+    # More realistic precipitation pattern
+    t = np.arange(n_days)
+    
+    # Seasonal precipitation with winter wet season
+    seasonal_factor = 1.5 + 0.9 * np.sin(2 * np.pi * t / 365 + np.pi)
+    P_base = np.random.gamma(1.8, 3, n_days) * seasonal_factor
+    
+    # Add dry periods (50% chance of no rain)
+    dry_prob = 0.5 + 0.2 * np.sin(2 * np.pi * t / 365)
+    P = np.where(np.random.rand(n_days) < dry_prob, 0, P_base)
+    
+    # Add storm events
+    storm_events = np.random.choice(n_days, size=15, replace=False)
+    P[storm_events] = P[storm_events] + np.random.gamma(4, 8, 15)
+    
+    # Enhanced potential evapotranspiration
+    PET_mean = 3.8
+    PET_amplitude = 2.2
+    PET = PET_mean + PET_amplitude * np.sin(2 * np.pi * t / 365) + np.random.normal(0, 0.2, n_days)
+    PET = np.maximum(PET, 0.5)
+    
+    print("\nEnhanced Input Data Summary:")
+    print(f"  Simulation period: {n_days} days ({n_days/365:.1f} years)")
+    print(f"  Total precipitation: {np.sum(P):.2f} mm")
+    print(f"  Average daily precipitation: {np.mean(P):.2f} mm")
+    print(f"  Maximum daily precipitation: {np.max(P):.2f} mm")
+    print(f"  Rainfall days: {np.sum(P > 0.1)} ({np.sum(P > 0.1)/n_days*100:.1f}%)")
+    print(f"  Total potential ET: {np.sum(PET):.2f} mm")
+    print(f"  Average daily PET: {np.mean(PET):.2f} mm")
+    print(f"  P/PET ratio: {np.sum(P)/np.sum(PET):.3f}")
+    
+    # Initialize enhanced model parameters
+    model = SacramentoModel(
+        UZTWM=90.0, UZFWM=45.0,          # Enhanced upper zone capacities
+        LZTWM=180.0, LZFPM=120.0, LZFSM=60.0,  # Enhanced lower zone capacities
+        UZK=0.35, LZPK=0.015, LZSK=0.08,      # Enhanced depletion rates
+        ZPERC=50.0, REXP=2.5,             # Enhanced percolation parameters
+        PCTIM=0.02, ADIMP=0.01, PFREE=0.15    # Enhanced surface characteristics
+    )
+    
+    print("\nEnhanced Model Parameters:")
+    print("  Upper Zone Configuration:")
+    print(f"    UZTWM (Upper zone tension water max): {model.UZTWM} mm")
+    print(f"    UZFWM (Upper zone free water max): {model.UZFWM} mm")
+    print(f"    UZK (Upper zone depletion rate): {model.UZK} /day")
+    print("  Lower Zone Configuration:")
+    print(f"    LZTWM (Lower zone tension water max): {model.LZTWM} mm")
+    print(f"    LZFPM (Lower zone primary free water max): {model.LZFPM} mm")
+    print(f"    LZFSM (Lower zone supplementary free water max): {model.LZFSM} mm")
+    print(f"    LZPK (Lower zone primary depletion rate): {model.LZPK} /day")
+    print(f"    LZSK (Lower zone supplementary depletion rate): {model.LZSK} /day")
+    print("  Percolation and Surface:")
+    print(f"    ZPERC (Maximum percolation rate): {model.ZPERC}")
+    print(f"    REXP (Percolation equation exponent): {model.REXP}")
+    print(f"    PCTIM (Impervious area fraction): {model.PCTIM}")
+    print(f"    PFREE (Direct percolation fraction): {model.PFREE}")
+    
+    # Run enhanced simulation
+    print("\nRunning enhanced Sacramento simulation...")
+    results = model.run(P, PET)
+    
+    # Comprehensive results analysis
+    print("\nComprehensive Simulation Results:")
+    print(f"  Water Balance:")
+    print(f"    Total precipitation: {np.sum(P):.2f} mm")
+    print(f"    Total discharge: {np.sum(results['Q']):.2f} mm")
+    print(f"    Annual discharge: {np.sum(results['Q'])/2:.2f} mm/year")
+    print(f"    Total ET: {np.sum(results['E']):.2f} mm")
+    print(f"    Runoff coefficient: {np.sum(results['Q']) / np.sum(P):.3f}")
+    print(f"    ET efficiency: {np.sum(results['E']) / np.sum(PET):.3f}")
+    
+    print(f"  Flow Characteristics:")
+    print(f"    Peak discharge: {np.max(results['Q']):.2f} mm/day")
+    print(f"    Mean discharge: {np.mean(results['Q']):.2f} mm/day")
+    print(f"    Median discharge: {np.median(results['Q']):.2f} mm/day")
+    print(f"    Flow variability (CV): {np.std(results['Q'])/np.mean(results['Q']):.3f}")
+    
+    # Comprehensive runoff components analysis
+    total_discharge = np.sum(results['Q'])
+    surface_total = np.sum(results['surface'])
+    interflow_total = np.sum(results['interflow'])
+    baseflow_primary_total = np.sum(results['baseflow_primary'])
+    baseflow_supp_total = np.sum(results['baseflow_supplementary'])
+    
+    print(f"\nDetailed Runoff Components Analysis:")
+    print(f"  Surface runoff: {surface_total:.2f} mm ({surface_total/total_discharge*100:.1f}%)")
+    print(f"  Interflow: {interflow_total:.2f} mm ({interflow_total/total_discharge*100:.1f}%)")
+    print(f"  Primary baseflow: {baseflow_primary_total:.2f} mm ({baseflow_primary_total/total_discharge*100:.1f}%)")
+    print(f"  Supplementary baseflow: {baseflow_supp_total:.2f} mm ({baseflow_supp_total/total_discharge*100:.1f}%)")
+    
+    total_baseflow = baseflow_primary_total + baseflow_supp_total
+    quick_flow = surface_total + interflow_total
+    
+    print(f"\nFlow Regime Analysis:")
+    print(f"  Total baseflow: {total_baseflow:.2f} mm ({total_baseflow/total_discharge*100:.1f}%)")
+    print(f"  Total quickflow: {quick_flow:.2f} mm ({quick_flow/total_discharge*100:.1f}%)")
+    print(f"  Baseflow index: {total_baseflow/total_discharge:.3f}")
+    print(f"  Flow regime: {'Baseflow dominated' if total_baseflow > quick_flow else 'Quickflow dominated'}")
+    
+    # Storage analysis
+    print(f"\nSoil Moisture Storage Analysis:")
+    avg_uztwc = np.mean(results['UZTWC'])
+    avg_lztwc = np.mean(results['LZTWC'])
+    total_avg_storage = avg_uztwc + avg_lztwc
+    total_capacity = model.UZTWM + model.LZTWM
+    
+    print(f"  Average upper zone tension water: {avg_uztwc:.1f} mm ({avg_uztwc/model.UZTWM*100:.1f}% of capacity)")
+    print(f"  Average lower zone tension water: {avg_lztwc:.1f} mm ({avg_lztwc/model.LZTWM*100:.1f}% of capacity)")
+    print(f"  Total average tension water storage: {total_avg_storage:.1f} mm ({total_avg_storage/total_capacity*100:.1f}% of capacity)")
+    
+    # Generate comprehensive visualizations
+    print(f"\nGenerating comprehensive visualizations...")
+    create_sacramento_plots(model, P, PET, results, save_dir="figures")
+    
+    # Enhanced sample output
+    print("\nDetailed Results for First 15 Days:")
+    print("Day |   Date   |   P    |  PET   |   E    |   Q    | UZTWC  | UZFWC  | LZTWC  | Surf | Inter| Base |")
+    print("----|----------|--------|--------|--------|--------|--------|--------|--------|------|------|------|")
+    
+    start_date = datetime(2020, 1, 1)
+    for i in range(15):
+        date_str = (start_date + timedelta(days=i)).strftime("%m-%d")
+        total_base = results['baseflow_primary'][i] + results['baseflow_supplementary'][i]
+        print(f"{i+1:3d} | {date_str} | {P[i]:6.2f} | {PET[i]:6.2f} | {results['E'][i]:6.2f} | "
+              f"{results['Q'][i]:6.2f} | {results['UZTWC'][i]:6.2f} | {results['UZFWC'][i]:6.2f} | "
+              f"{results['LZTWC'][i]:6.2f} | {results['surface'][i]:4.3f} | "
+              f"{results['interflow'][i]:5.3f} | {total_base:4.3f} |")
+    
+    # Water balance check
+    total_input = np.sum(P)
+    total_output = np.sum(results['E']) + np.sum(results['Q'])
+    initial_storage = (model.UZTWM + model.LZTWM) * 0.5  # Assume 50% initial
+    final_storage = results['UZTWC'][-1] + results['UZFWC'][-1] + results['LZTWC'][-1] + results['LZFPC'][-1] + results['LZFSC'][-1]
+    storage_change = final_storage - initial_storage
+    balance_error = total_input - total_output - storage_change
+    
+    print(f"\nWater Balance Check:")
+    print(f"  Total input (P): {total_input:.2f} mm")
+    print(f"  Total output (E + Q): {total_output:.2f} mm")
+    print(f"  Storage change: {storage_change:.2f} mm")
+    print(f"  Balance error: {balance_error:.2f} mm ({abs(balance_error)/total_input*100:.3f}%)")
+    
+    print("\n" + "=" * 80)
+    print("Enhanced Sacramento (SAC-SMA) simulation completed successfully!")
+    print("This model demonstrates:")
+    print("  - Continuous soil moisture accounting")
+    print("  - Five-storage structure (upper and lower zones)")
+    print("  - Four runoff components (surface, interflow, two baseflow types)")
+    print("  - Suitable for operational river forecasting")
+    print("Check the 'figures' directory for comprehensive visualizations.")
+    print("=" * 80)
+    
+    return results, model
 
 
 if __name__ == "__main__":

@@ -21,12 +21,38 @@ Date: 2024
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import seaborn as sns
+import os
+from datetime import datetime, timedelta
 
 # Import all models
 from xinanjiang_model import XinanjiangModel
 from tank_model import TankModel1D, TankModel2D, TankModel3D
 from gr4j_model import GR4J
 from sacramento_model import SacramentoModel
+
+
+def calculate_nse(observed: np.ndarray, simulated: np.ndarray) -> float:
+    """Compute Nash-Sutcliffe Efficiency between observed and simulated flows."""
+    if observed.size == 0:
+        return np.nan
+    denominator = np.sum((observed - np.mean(observed)) ** 2)
+    if denominator == 0:
+        return np.nan
+    return 1.0 - np.sum((observed - simulated) ** 2) / denominator
+
+
+def calculate_rmse(observed: np.ndarray, simulated: np.ndarray) -> float:
+    """Compute the root mean squared error."""
+    return float(np.sqrt(np.mean((observed - simulated) ** 2)))
+
+
+def calculate_pbias(observed: np.ndarray, simulated: np.ndarray) -> float:
+    """Compute percent bias between observed and simulated flows."""
+    if np.sum(observed) == 0:
+        return np.nan
+    return float(100.0 * np.sum(simulated - observed) / np.sum(observed))
 
 
 def generate_synthetic_data(n_days: int = 365, seed: int = 42):
@@ -141,25 +167,6 @@ def compare_all_models():
     
     results = {}
 
-    def calculate_nse(observed: np.ndarray, simulated: np.ndarray) -> float:
-        """Compute Nash-Sutcliffe Efficiency between observed and simulated flows."""
-        if observed.size == 0:
-            return np.nan
-        denominator = np.sum((observed - np.mean(observed)) ** 2)
-        if denominator == 0:
-            return np.nan
-        return 1.0 - np.sum((observed - simulated) ** 2) / denominator
-
-    def calculate_rmse(observed: np.ndarray, simulated: np.ndarray) -> float:
-        """Compute the root mean squared error."""
-        return float(np.sqrt(np.mean((observed - simulated) ** 2)))
-
-    def calculate_pbias(observed: np.ndarray, simulated: np.ndarray) -> float:
-        """Compute percent bias between observed and simulated flows."""
-        if np.sum(observed) == 0:
-            return np.nan
-        return float(100.0 * np.sum(simulated - observed) / np.sum(observed))
-    
     # 1. Xinanjiang Model
     print("\n" + "-" * 80)
     print("1. Running Xinanjiang Model...")
@@ -238,29 +245,182 @@ def compare_all_models():
 
     print("\n" + "=" * 80)
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(15, 10))
-
-    days = np.arange(len(P))
-    ax1.bar(days, P, color='royalblue', alpha=0.8, label='Precipitation')
-    ax1.set_ylabel('Precipitation (mm/day)')
-    ax1.invert_yaxis()
-    ax1.grid(True, linestyle='--', alpha=0.4)
-    ax1.legend(loc='upper right')
-
-    ax2.plot(days, observed_Q, label='Synthetic Observed Flow', color='black', linestyle='--')
-    for model_name, result in results.items():
-        ax2.plot(days, result['Q'], label=model_name)
-
-    ax2.set_ylabel('Discharge (mm/day)')
-    ax2.set_xlabel('Days')
-    ax2.grid(True, linestyle='--', alpha=0.4)
-    ax2.legend(loc='upper right')
-
-    fig.suptitle('Comparison of Hydrological Models')
-    plt.tight_layout()
-    plt.show()
+    # Enhanced comprehensive visualization
+    create_model_comparison_plots(P, ET, observed_Q, results, save_dir="figures")
 
     return results
+
+
+def create_model_comparison_plots(P, ET, observed_Q, results, save_dir="figures"):
+    """
+    Create comprehensive comparison plots for all hydrological models.
+    """
+    # Ensure save directory exists
+    os.makedirs(save_dir, exist_ok=True)
+    
+    # Set style
+    plt.style.use('seaborn-v0_8-darkgrid')
+    sns.set_palette("husl")
+    
+    n_days = len(P)
+    days = np.arange(n_days)
+    dates = [datetime(2020, 1, 1) + timedelta(days=i) for i in range(n_days)]
+    
+    # Figure 1: Main model comparison
+    fig, axes = plt.subplots(3, 1, figsize=(16, 12), sharex=True)
+    fig.suptitle('Comprehensive Hydrological Models Comparison', fontsize=16, fontweight='bold')
+
+    # Precipitation (inverted)
+    axes[0].bar(dates, P, color='steelblue', alpha=0.7, width=1)
+    axes[0].set_ylabel('Precipitation\n(mm/day)', fontweight='bold')
+    axes[0].invert_yaxis()
+    axes[0].grid(True, alpha=0.3)
+    axes[0].set_ylim(max(P) * 1.1, 0)
+
+    # Evapotranspiration
+    axes[1].plot(dates, ET, color='orange', linewidth=1.5, label='Potential ET')
+    axes[1].set_ylabel('Evapotranspiration\n(mm/day)', fontweight='bold')
+    axes[1].grid(True, alpha=0.3)
+    axes[1].legend()
+
+    # Discharge comparison
+    axes[2].plot(dates, observed_Q, label='Synthetic Observed', color='black', linewidth=2, linestyle='--')
+    colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
+    for i, (model_name, result) in enumerate(results.items()):
+        axes[2].plot(dates, result['Q'], label=model_name, color=colors[i % len(colors)], linewidth=1.5)
+
+    axes[2].set_ylabel('Discharge\n(mm/day)', fontweight='bold')
+    axes[2].set_xlabel('Date', fontweight='bold')
+    axes[2].grid(True, alpha=0.3)
+    axes[2].legend()
+
+    # Format x-axis
+    for ax in axes:
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, 'models_comprehensive_comparison.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+    # Figure 2: Performance analysis
+    model_names = list(results.keys())
+    n_models = len(model_names)
+    
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
+    fig.suptitle('Models Performance Analysis', fontsize=16, fontweight='bold')
+
+    # Performance metrics
+    nse_values = []
+    rmse_values = []
+    runoff_coeffs = []
+    total_discharges = []
+    
+    for model_name, result in results.items():
+        Q = result['Q']
+        nse_values.append(calculate_nse(observed_Q, Q))
+        rmse_values.append(calculate_rmse(observed_Q, Q))
+        runoff_coeffs.append(np.sum(Q) / np.sum(P))
+        total_discharges.append(np.sum(Q))
+
+    # NSE comparison
+    bars1 = axes[0,0].bar(model_names, nse_values, color=colors[:n_models], alpha=0.7)
+    axes[0,0].set_ylabel('Nash-Sutcliffe Efficiency', fontweight='bold')
+    axes[0,0].set_title('Model Performance (NSE)', fontweight='bold')
+    axes[0,0].grid(True, alpha=0.3)
+    axes[0,0].tick_params(axis='x', rotation=45)
+    
+    # Add value labels on bars
+    for bar, nse in zip(bars1, nse_values):
+        height = bar.get_height()
+        axes[0,0].text(bar.get_x() + bar.get_width()/2., height + 0.01,
+                      f'{nse:.3f}', ha='center', va='bottom', fontweight='bold')
+
+    # RMSE comparison
+    bars2 = axes[0,1].bar(model_names, rmse_values, color=colors[:n_models], alpha=0.7)
+    axes[0,1].set_ylabel('Root Mean Square Error (mm/day)', fontweight='bold')
+    axes[0,1].set_title('Model Error (RMSE)', fontweight='bold')
+    axes[0,1].grid(True, alpha=0.3)
+    axes[0,1].tick_params(axis='x', rotation=45)
+    
+    # Add value labels on bars
+    for bar, rmse in zip(bars2, rmse_values):
+        height = bar.get_height()
+        axes[0,1].text(bar.get_x() + bar.get_width()/2., height + 0.001,
+                      f'{rmse:.3f}', ha='center', va='bottom', fontweight='bold')
+
+    # Runoff coefficient comparison
+    bars3 = axes[1,0].bar(model_names, runoff_coeffs, color=colors[:n_models], alpha=0.7)
+    axes[1,0].set_ylabel('Runoff Coefficient', fontweight='bold')
+    axes[1,0].set_title('Water Balance (Runoff Coefficient)', fontweight='bold')
+    axes[1,0].grid(True, alpha=0.3)
+    axes[1,0].tick_params(axis='x', rotation=45)
+    
+    # Add value labels on bars
+    for bar, coeff in zip(bars3, runoff_coeffs):
+        height = bar.get_height()
+        axes[1,0].text(bar.get_x() + bar.get_width()/2., height + 0.005,
+                      f'{coeff:.3f}', ha='center', va='bottom', fontweight='bold')
+
+    # Total discharge comparison
+    bars4 = axes[1,1].bar(model_names, total_discharges, color=colors[:n_models], alpha=0.7)
+    axes[1,1].set_ylabel('Total Discharge (mm)', fontweight='bold')
+    axes[1,1].set_title('Total Water Yield', fontweight='bold')
+    axes[1,1].grid(True, alpha=0.3)
+    axes[1,1].tick_params(axis='x', rotation=45)
+    
+    # Add value labels on bars
+    for bar, discharge in zip(bars4, total_discharges):
+        height = bar.get_height()
+        axes[1,1].text(bar.get_x() + bar.get_width()/2., height + 0.5,
+                      f'{discharge:.1f}', ha='center', va='bottom', fontweight='bold')
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, 'models_performance_analysis.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+    # Figure 3: Detailed time series analysis
+    fig, axes = plt.subplots(n_models, 1, figsize=(14, 3*n_models), sharex=True)
+    if n_models == 1:
+        axes = [axes]
+    
+    fig.suptitle('Individual Model Performance Analysis', fontsize=16, fontweight='bold')
+
+    for i, (model_name, result) in enumerate(results.items()):
+        Q_sim = result['Q']
+        
+        axes[i].plot(dates, observed_Q, label='Observed', color='black', linewidth=2, linestyle='--')
+        axes[i].plot(dates, Q_sim, label=f'{model_name}', color=colors[i], linewidth=1.5)
+        
+        # Fill area between curves
+        axes[i].fill_between(dates, observed_Q, Q_sim, alpha=0.2, color=colors[i])
+        
+        nse = calculate_nse(observed_Q, Q_sim)
+        rmse = calculate_rmse(observed_Q, Q_sim)
+        
+        axes[i].set_ylabel('Discharge\n(mm/day)', fontweight='bold')
+        axes[i].set_title(f'{model_name} - NSE: {nse:.3f}, RMSE: {rmse:.3f}', fontweight='bold')
+        axes[i].grid(True, alpha=0.3)
+        axes[i].legend()
+
+    axes[-1].set_xlabel('Date', fontweight='bold')
+    
+    # Format x-axis
+    for ax in axes:
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        ax.xaxis.set_major_locator(mdates.MonthLocator(interval=1))
+        plt.setp(ax.xaxis.get_majorticklabels(), rotation=45)
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(save_dir, 'models_individual_analysis.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+
+    print(f"✓ Model comparison visualization plots saved to '{save_dir}' directory")
+    print("  Generated files:")
+    print("  - models_comprehensive_comparison.png")
+    print("  - models_performance_analysis.png")
+    print("  - models_individual_analysis.png")
 
 
 def sensitivity_analysis_example():
@@ -437,25 +597,25 @@ def main():
     # Example 1: Real-world data structure
     real_world_data_structure()
     
-    input("\nPress Enter to continue to model comparison...")
+    # input("\nPress Enter to continue to model comparison...")
     
     # Example 2: Compare all models
     compare_all_models()
     
-    input("\nPress Enter to continue to sensitivity analysis...")
+    # input("\nPress Enter to continue to sensitivity analysis...")
     
     # Example 3: Sensitivity analysis
-    sensitivity_analysis_example()
+    # sensitivity_analysis_example()
     
-    input("\nPress Enter to continue to storm event simulation...")
+    # input("\nPress Enter to continue to storm event simulation...")
     
     # Example 4: Storm event
-    storm_event_example()
+    # storm_event_example()
     
-    input("\nPress Enter to continue to seasonal analysis...")
+    # input("\nPress Enter to continue to seasonal analysis...")
     
     # Example 5: Seasonal patterns
-    seasonal_pattern_example()
+    # seasonal_pattern_example()
     
     print("\n" + "=" * 80)
     print("All examples completed successfully!")
