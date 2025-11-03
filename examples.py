@@ -20,6 +20,7 @@ Date: 2024
 
 import numpy as np
 import sys
+import matplotlib.pyplot as plt
 
 # Import all models
 from xinanjiang_model import XinanjiangModel
@@ -139,12 +140,37 @@ def compare_all_models():
     print(f"Average Daily ET: {np.mean(ET):.2f} mm")
     
     results = {}
+
+    def calculate_nse(observed: np.ndarray, simulated: np.ndarray) -> float:
+        """Compute Nash-Sutcliffe Efficiency between observed and simulated flows."""
+        if observed.size == 0:
+            return np.nan
+        denominator = np.sum((observed - np.mean(observed)) ** 2)
+        if denominator == 0:
+            return np.nan
+        return 1.0 - np.sum((observed - simulated) ** 2) / denominator
+
+    def calculate_rmse(observed: np.ndarray, simulated: np.ndarray) -> float:
+        """Compute the root mean squared error."""
+        return float(np.sqrt(np.mean((observed - simulated) ** 2)))
+
+    def calculate_pbias(observed: np.ndarray, simulated: np.ndarray) -> float:
+        """Compute percent bias between observed and simulated flows."""
+        if np.sum(observed) == 0:
+            return np.nan
+        return float(100.0 * np.sum(simulated - observed) / np.sum(observed))
     
     # 1. Xinanjiang Model
     print("\n" + "-" * 80)
     print("1. Running Xinanjiang Model...")
     xaj = XinanjiangModel()
     results['Xinanjiang'] = xaj.run(P, ET)
+    rng = np.random.default_rng(123)
+    observed_Q = np.clip(
+        results['Xinanjiang']['Q'] + rng.normal(0.0, 0.5, size=len(P)),
+        a_min=0.0,
+        a_max=None
+    )
     print(f"   Total discharge: {np.sum(results['Xinanjiang']['Q']):.2f} mm")
     print(f"   Runoff coefficient: {np.sum(results['Xinanjiang']['Q'])/np.sum(P):.3f}")
     
@@ -192,22 +218,48 @@ def compare_all_models():
     print("\n" + "=" * 80)
     print("Model Comparison Summary")
     print("=" * 80)
-    print("\n{:<20} {:<15} {:<15} {:<15} {:<15}".format(
-        "Model", "Total Q (mm)", "Runoff Coef", "Peak Q (mm)", "Mean Q (mm)"))
+    print("\n{:<20} {:<15} {:<15} {:<15} {:<15} {:<12} {:<12} {:<12}".format(
+        "Model", "Total Q (mm)", "Runoff Coef", "Peak Q (mm)", "Mean Q (mm)",
+        "NSE", "RMSE", "PBIAS"))
     print("-" * 80)
-    
+
     for model_name, result in results.items():
         Q = result['Q']
         total_Q = np.sum(Q)
         runoff_coef = total_Q / np.sum(P)
         peak_Q = np.max(Q)
         mean_Q = np.mean(Q)
-        
-        print("{:<20} {:<15.2f} {:<15.3f} {:<15.2f} {:<15.2f}".format(
-            model_name, total_Q, runoff_coef, peak_Q, mean_Q))
-    
+        nse = calculate_nse(observed_Q, Q)
+        rmse = calculate_rmse(observed_Q, Q)
+        pbias = calculate_pbias(observed_Q, Q)
+
+        print("{:<20} {:<15.2f} {:<15.3f} {:<15.2f} {:<15.2f} {:<12.3f} {:<12.2f} {:<12.2f}".format(
+            model_name, total_Q, runoff_coef, peak_Q, mean_Q, nse, rmse, pbias))
+
     print("\n" + "=" * 80)
-    
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(15, 10))
+
+    days = np.arange(len(P))
+    ax1.bar(days, P, color='royalblue', alpha=0.8, label='Precipitation')
+    ax1.set_ylabel('Precipitation (mm/day)')
+    ax1.invert_yaxis()
+    ax1.grid(True, linestyle='--', alpha=0.4)
+    ax1.legend(loc='upper right')
+
+    ax2.plot(days, observed_Q, label='Synthetic Observed Flow', color='black', linestyle='--')
+    for model_name, result in results.items():
+        ax2.plot(days, result['Q'], label=model_name)
+
+    ax2.set_ylabel('Discharge (mm/day)')
+    ax2.set_xlabel('Days')
+    ax2.grid(True, linestyle='--', alpha=0.4)
+    ax2.legend(loc='upper right')
+
+    fig.suptitle('Comparison of Hydrological Models')
+    plt.tight_layout()
+    plt.show()
+
     return results
 
 
