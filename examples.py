@@ -232,7 +232,13 @@ def compare_all_models():
     print("\n" + "-" * 80)
     print("7. Running HBV Model / 运行HBV模型...")
     # Generate temperature data for HBV / 为HBV生成温度数据
-    T = 10 + 15 * np.sin(2 * np.pi * np.arange(len(P)) / 365 - np.pi/2) + np.random.RandomState(42).normal(0, 2, len(P))
+    # Seasonal temperature: mean 10°C, amplitude 15°C, peak in summer (day ~172)
+    day_of_year = np.arange(len(P))
+    T_mean = 10.0
+    T_amplitude = 15.0
+    T_seasonal = T_mean + T_amplitude * np.sin(2 * np.pi * day_of_year / 365 - np.pi/2)
+    T_noise = np.random.RandomState(42).normal(0, 2, len(P))
+    T = T_seasonal + T_noise
     hbv = HBVModel(TT=0.0, CFMAX=3.5, FC=250.0, LP=0.7, BETA=2.0, 
                    K0=0.3, K1=0.05, K2=0.01, UZL=20.0, PERC=2.0)
     results['HBV'] = hbv.run(P, T, ET, warmup=90)

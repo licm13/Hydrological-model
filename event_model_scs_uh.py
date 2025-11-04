@@ -110,7 +110,7 @@ class SCS_CN_Model:
     def __init__(self, CN: float = 75.0, Ia_ratio: float = 0.2):
         """Initialize SCS-CN model / 初始化SCS-CN模型"""
         if not 0 < CN <= 100:
-            raise ValueError("CN must be between 0 and 100 / CN必须在0到100之间")
+            raise ValueError("CN must be between 0 (exclusive) and 100 (inclusive) / CN必须在0到100之间（0不包括）")
         
         self.CN = CN
         self.Ia_ratio = Ia_ratio
