@@ -70,11 +70,31 @@ pip install -r requirements.txt
 First, run the examples with synthetic data to understand model behavior.
 
 ```bash
-# This script compares all models under various scenarios
+# This script compares all continuous models under various scenarios
 python examples.py
 ```
 
 This will demonstrate model comparison, sensitivity analysis, and storm event simulation.
+
+**Running Individual Models:**
+
+Each model can be run independently for detailed demonstrations:
+
+```bash
+# Run HBV model (includes temperature-based processes)
+python hbv_model.py
+
+# Run SCS-CN + Unit Hydrograph event model
+python event_model_scs_uh.py
+
+# Run other continuous models
+python xinanjiang_model.py
+python tank_model.py
+python gr4j_model.py
+python sacramento_model.py
+```
+
+Each model generates comprehensive visualizations in the `figures/` directory.
 
 ### Advanced Example: Calibration and Validation
 
@@ -186,11 +206,31 @@ pip install -r requirements.txt
 首先，运行基于虚拟数据的示例，以理解各个模型的基本行为。
 
 ```bash
-# 该脚本在多种情境下对比所有模型
+# 该脚本在多种情境下对比所有连续型模型
 python examples.py
 ```
 
 这将为您展示模型对比、参数敏感性分析和暴雨洪水模拟等功能。
+
+**运行单个模型:**
+
+每个模型都可以独立运行以获得详细演示:
+
+```bash
+# 运行HBV模型(包括基于温度的过程)
+python hbv_model.py
+
+# 运行SCS-CN + 单位线事件模型
+python event_model_scs_uh.py
+
+# 运行其他连续型模型
+python xinanjiang_model.py
+python tank_model.py
+python gr4j_model.py
+python sacramento_model.py
+```
+
+每个模型在`figures/`目录中生成综合可视化图表。
 
 ### 进阶案例：参数率定与验证
 
