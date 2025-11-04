@@ -100,6 +100,10 @@ from datetime import datetime, timedelta
 import os
 import seaborn as sns
 
+# Configure matplotlib for Chinese font display / 配置matplotlib以显示中文
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False  # Fix minus sign display / 修复负号显示
+
 
 class HBVModel:
     """
@@ -586,6 +590,10 @@ def create_hbv_plots(model: HBVModel, P: np.ndarray, T: np.ndarray, PET: np.ndar
     # Set style / 设置样式
     plt.style.use('seaborn-v0_8-darkgrid')
     sns.set_palette("husl")
+    
+    # Re-configure Chinese font after style setting / 样式设置后重新配置中文字体
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
     
     # Create date index / 创建日期索引
     n_days = len(P)

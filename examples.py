@@ -14,8 +14,8 @@ Models included:
 3. GR4J Model
 4. Sacramento Model (SAC-SMA)
 
-Author: [Your Name]
-Date: 2024
+Author: LCM
+Date: 2025-11-04
 """
 
 import numpy as np
@@ -25,6 +25,10 @@ import matplotlib.dates as mdates
 import seaborn as sns
 import os
 from datetime import datetime, timedelta
+
+# Configure matplotlib for Chinese font display / 配置matplotlib以显示中文
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False  # Fix minus sign display / 修复负号显示
 
 # Import all models / 导入所有模型
 from xinanjiang_model import XinanjiangModel
@@ -298,6 +302,10 @@ def create_model_comparison_plots(P, ET, observed_Q, results, save_dir="figures"
     # Set style
     plt.style.use('seaborn-v0_8-darkgrid')
     sns.set_palette("husl")
+    
+    # Re-configure Chinese font after style setting / 样式设置后重新配置中文字体
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
     
     n_days = len(P)
     days = np.arange(n_days)

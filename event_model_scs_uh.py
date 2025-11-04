@@ -115,6 +115,10 @@ import matplotlib.dates as mdates
 from datetime import datetime, timedelta
 import os
 
+# Configure matplotlib for Chinese font display / 配置matplotlib以显示中文
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False  # Fix minus sign display / 修复负号显示
+
 
 class SCSCurveNumber:
     """
@@ -552,6 +556,10 @@ def create_event_plots(model: EventModel, results: Dict[str, np.ndarray],
     
     # Set style / 设置样式
     plt.style.use('seaborn-v0_8-darkgrid')
+    
+    # Re-configure Chinese font after style setting / 样式设置后重新配置中文字体
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
     
     n_steps = len(results['P'])
     t = np.arange(n_steps) * model.dt  # Time in hours / 时间(小时)

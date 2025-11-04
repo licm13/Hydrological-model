@@ -11,6 +11,10 @@ import seaborn as sns
 import os
 from datetime import datetime, timedelta
 
+# Configure matplotlib for Chinese font display / 配置matplotlib以显示中文
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False  # Fix minus sign display / 修复负号显示
+
 from gr4j_model import GR4J
 
 
@@ -65,6 +69,10 @@ def create_calibration_plots(dataset, Q_obs, Q_sim_full, optimal_params, nse_cal
     # Set style
     plt.style.use('seaborn-v0_8-darkgrid')
     sns.set_palette("husl")
+    
+    # Re-configure Chinese font after style setting / 样式设置后重新配置中文字体
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
     
     P = dataset['Precipitation'].to_numpy()
     E = dataset['Evapotranspiration'].to_numpy()

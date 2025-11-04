@@ -58,6 +58,10 @@ import seaborn as sns
 from scipy.stats import pearsonr
 from scipy import stats
 
+# Configure matplotlib for Chinese font display / 配置matplotlib以显示中文
+plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+plt.rcParams['axes.unicode_minus'] = False  # Fix minus sign display / 修复负号显示
+
 
 class Tank:
     """
@@ -421,6 +425,10 @@ def create_tank_plots(model_1d, model_2d, model_3d, P, EP, results_1d, results_2
     # Set style
     plt.style.use('seaborn-v0_8-darkgrid')
     sns.set_palette("husl")
+    
+    # Re-configure Chinese font after style setting / 样式设置后重新配置中文字体
+    plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
+    plt.rcParams['axes.unicode_minus'] = False
     
     # Create date index
     n_days = len(P)
