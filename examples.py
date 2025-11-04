@@ -1,20 +1,25 @@
 """
 Comprehensive Examples for All Hydrological Models
+所有水文模型的综合示例
 
 This script demonstrates the usage of all implemented hydrological models
 with various scenarios including:
-- Random data generation
-- Model comparison
-- Visualization
-- Real-world data structure examples
+- Random data generation / 随机数据生成
+- Model comparison / 模型比较
+- Visualization / 可视化
+- Real-world data structure examples / 真实数据结构示例
 
-Models included:
+本脚本演示所有已实现水文模型的使用，包含多种场景。
+
+Models included / 包含的模型:
 1. Xinanjiang Model (新安江模型)
 2. Tank Model (タンクモデル) - 1D, 2D, 3D
 3. GR4J Model
 4. Sacramento Model (SAC-SMA)
+5. HBV Model (HBV-96 水文模型)
+6. SCS-CN + Unit Hydrograph Event Model (SCS-CN + 单位线事件模型)
 
-Author: [Your Name]
+Author: Educational implementation for HydroLearn
 Date: 2024
 """
 
@@ -26,11 +31,13 @@ import seaborn as sns
 import os
 from datetime import datetime, timedelta
 
-# Import all models
+# Import all models / 导入所有模型
 from xinanjiang_model import XinanjiangModel
 from tank_model import TankModel1D, TankModel2D, TankModel3D
 from gr4j_model import GR4J
 from sacramento_model import SacramentoModel
+from hbv_model import HBVModel
+from event_model_scs_uh import SCS_UH_EventModel
 
 
 def calculate_nse(observed: np.ndarray, simulated: np.ndarray) -> float:
@@ -221,6 +228,21 @@ def compare_all_models():
     print(f"   Total discharge: {np.sum(results['Sacramento']['Q']):.2f} mm")
     print(f"   Runoff coefficient: {np.sum(results['Sacramento']['Q'])/np.sum(P):.3f}")
     
+    # 7. HBV Model / HBV模型
+    print("\n" + "-" * 80)
+    print("7. Running HBV Model / 运行HBV模型...")
+    # Generate temperature data for HBV / 为HBV生成温度数据
+    T = 10 + 15 * np.sin(2 * np.pi * np.arange(len(P)) / 365 - np.pi/2) + np.random.RandomState(42).normal(0, 2, len(P))
+    hbv = HBVModel(TT=0.0, CFMAX=3.5, FC=250.0, LP=0.7, BETA=2.0, 
+                   K0=0.3, K1=0.05, K2=0.01, UZL=20.0, PERC=2.0)
+    results['HBV'] = hbv.run(P, T, ET, warmup=90)
+    # Remove NaN values for comparison / 移除NaN值以便比较
+    Q_hbv_valid = results['HBV']['Q'].copy()
+    Q_hbv_valid[:90] = 0  # Set warmup period to 0 for fair comparison
+    results['HBV']['Q'] = Q_hbv_valid
+    print(f"   Total discharge: {np.sum(Q_hbv_valid):.2f} mm")
+    print(f"   Runoff coefficient: {np.sum(Q_hbv_valid)/np.sum(P):.3f}")
+    
     # Comparison Table
     print("\n" + "=" * 80)
     print("Model Comparison Summary")
@@ -285,7 +307,7 @@ def create_model_comparison_plots(P, ET, observed_Q, results, save_dir="figures"
 
     # Discharge comparison
     axes[2].plot(dates, observed_Q, label='Synthetic Observed', color='black', linewidth=2, linestyle='--')
-    colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown']
+    colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown', 'pink']
     for i, (model_name, result) in enumerate(results.items()):
         axes[2].plot(dates, result['Q'], label=model_name, color=colors[i % len(colors)], linewidth=1.5)
 
@@ -625,6 +647,11 @@ def main():
     print("  - tank_model.py")
     print("  - gr4j_model.py")
     print("  - sacramento_model.py")
+    print("  - hbv_model.py (NEW / 新增)")
+    print("  - event_model_scs_uh.py (NEW / 新增)")
+    print("\nFor teaching resources / 教学资源:")
+    print("  - notebooks/teaching_quickstart.ipynb")
+    print("  - data/example_teaching_dataset.csv")
     print("\n")
 
 

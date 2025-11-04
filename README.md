@@ -42,6 +42,18 @@ This repository is designed as a teaching tool for 3rd-year hydraulic engineerin
 - **Type**: Continuous soil moisture accounting.
 - **Best for**: Detailed operational river forecasting.
 
+#### 5. **HBV Model (HBV-96 水文模型)** 🆕
+
+- **Type**: Conceptual, continuous simulation with snow routine.
+- **Best for**: Nordic climate conditions and catchments with snow influence.
+- **Key features**: Snow accumulation/melt, soil moisture accounting, dual reservoir routing.
+
+#### 6. **SCS-CN + Unit Hydrograph Event Model** 🆕
+
+- **Type**: Event-based, empirical runoff estimation.
+- **Best for**: Single storm event analysis and flood peak estimation.
+- **Key features**: Curve Number method, triangular unit hydrograph, quick event simulation.
+
 ### Installation
 
 ```bash
@@ -64,6 +76,25 @@ python examples.py
 
 This will demonstrate model comparison, sensitivity analysis, and storm event simulation.
 
+### Teaching Resources / 教学资源 🆕
+
+For students and educators, we provide additional teaching materials:
+
+**Jupyter Notebook Tutorial**: 
+```bash
+# Open the interactive teaching notebook
+jupyter notebook notebooks/teaching_quickstart.ipynb
+```
+
+This notebook demonstrates:
+- HBV model for continuous simulation
+- SCS-CN method for event-based modeling
+- Comparison of continuous vs. event-based approaches
+- Hands-on exercises with visualizations
+
+**Sample Teaching Dataset**:
+- `data/example_teaching_dataset.csv` - A ~100-row deterministic dataset for classroom exercises
+
 ### Advanced Example: Calibration and Validation
 
 This is the core of practical hydrological modeling. We will use a sample dataset to calibrate the GR4J model.
@@ -84,17 +115,23 @@ This script will:
 ### Project Structure
 
 ```
-Hydrological-model/
+HydroLearn/
 ├── data/
-│   └── sample_data.csv       # Sample real-world data
-├── README.md                 # This file
-├── requirements.txt          # Python dependencies
-├── xinanjiang_model.py       # Xinanjiang model
-├── tank_model.py             # Tank model
-├── gr4j_model.py             # GR4J model
-├── sacramento_model.py       # Sacramento model
-├── examples.py               # Examples with synthetic data
-└── calibration_example.py    # Calibration with real data
+│   ├── sample_data.csv              # Sample real-world data
+│   └── example_teaching_dataset.csv # Teaching dataset (NEW / 新增) 🆕
+├── notebooks/
+│   └── teaching_quickstart.ipynb    # Interactive tutorial (NEW / 新增) 🆕
+├── figures/                         # Output visualizations
+├── README.md                        # This file
+├── requirements.txt                 # Python dependencies
+├── xinanjiang_model.py              # Xinanjiang model
+├── tank_model.py                    # Tank model
+├── gr4j_model.py                    # GR4J model
+├── sacramento_model.py              # Sacramento model
+├── hbv_model.py                     # HBV model (NEW / 新增) 🆕
+├── event_model_scs_uh.py            # SCS-CN + UH model (NEW / 新增) 🆕
+├── examples.py                      # Examples with synthetic data
+└── calibration_example.py           # Calibration with real data
 ```
 
 ### For Your Assignment
@@ -143,6 +180,18 @@ Hydrological-model/
 - **类型**: 连续土壤水分核算模型。
 - **适用于**: 精细化的业务化洪水预报。
 
+#### 5. **HBV模型 (HBV-96)** 🆕
+
+- **类型**: 概念性，带积雪程序的连续模拟模型。
+- **适用于**: 北欧气候条件和受积雪影响的流域。
+- **核心特性**: 积雪累积/融化、土壤水分核算、双水库汇流。
+
+#### 6. **SCS-CN + 单位线事件模型** 🆕
+
+- **类型**: 基于事件的经验产流估算模型。
+- **适用于**: 单场暴雨事件分析和洪峰流量估算。
+- **核心特性**: 曲线数法、三角形单位线、快速事件模拟。
+
 ### 安装
 
 ```bash
@@ -165,6 +214,25 @@ python examples.py
 
 这将为您展示模型对比、参数敏感性分析和暴雨洪水模拟等功能。
 
+### 教学资源 🆕
+
+为学生和教师提供的额外教学材料：
+
+**Jupyter 笔记本教程**：
+```bash
+# 打开交互式教学笔记本
+jupyter notebook notebooks/teaching_quickstart.ipynb
+```
+
+此笔记本演示：
+- HBV模型的连续模拟
+- SCS-CN方法的事件建模
+- 连续与事件建模方法的比较
+- 带可视化的实践练习
+
+**教学示例数据集**：
+- `data/example_teaching_dataset.csv` - 约100行的确定性数据集，用于课堂练习
+
 ### 进阶案例：参数率定与验证
 
 这是应用水文模型最核心的环节。我们将使用一个案例数据集来率定GR4J模型。
@@ -185,10 +253,24 @@ python examples.py
 ### 项目结构
 
 ```
-Hydrological-model/
+HydroLearn/
 ├── data/
-│   └── sample_data.csv       # 真实数据样例
-├── README.md                 # 本文件
+│   ├── sample_data.csv              # 真实数据样例
+│   └── example_teaching_dataset.csv # 教学数据集 🆕
+├── notebooks/
+│   └── teaching_quickstart.ipynb    # 交互式教程 🆕
+├── figures/                         # 输出的可视化图表
+├── README.md                        # 本文件
+├── requirements.txt                 # Python依赖包
+├── xinanjiang_model.py              # 新安江模型
+├── tank_model.py                    # Tank模型
+├── gr4j_model.py                    # GR4J模型
+├── sacramento_model.py              # Sacramento模型
+├── hbv_model.py                     # HBV模型 🆕
+├── event_model_scs_uh.py            # SCS-CN + UH模型 🆕
+├── examples.py                      # 虚拟数据示例
+└── calibration_example.py           # 真实数据率定示例
+```
 ├── requirements.txt          # Python依赖
 ├── xinanjiang_model.py       # 新安江模型
 ├── tank_model.py             # Tank模型
