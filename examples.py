@@ -40,27 +40,18 @@ from event_model_scs_uh import EventModel, create_event_plots
 # Note: event_model_scs_uh requires hourly data and is event-based (see separate usage)
 # 注意: event_model_scs_uh需要小时数据，是基于事件的(参见单独使用说明)
 
-
-def calculate_nse(observed: np.ndarray, simulated: np.ndarray) -> float:
-    """Compute Nash-Sutcliffe Efficiency between observed and simulated flows."""
-    if observed.size == 0:
-        return np.nan
-    denominator = np.sum((observed - np.mean(observed)) ** 2)
-    if denominator == 0:
-        return np.nan
-    return 1.0 - np.sum((observed - simulated) ** 2) / denominator
-
-
-def calculate_rmse(observed: np.ndarray, simulated: np.ndarray) -> float:
-    """Compute the root mean squared error."""
-    return float(np.sqrt(np.mean((observed - simulated) ** 2)))
-
-
-def calculate_pbias(observed: np.ndarray, simulated: np.ndarray) -> float:
-    """Compute percent bias between observed and simulated flows."""
-    if np.sum(observed) == 0:
-        return np.nan
-    return float(100.0 * np.sum(simulated - observed) / np.sum(observed))
+# Import utility modules / 导入工具模块
+from utils.performance import (
+    nash_sutcliffe_efficiency,
+    root_mean_squared_error,
+    percent_bias,
+    basic_runoff_statistics
+)
+from utils.reporting import (
+    format_model_summary,
+    compute_water_balance,
+    print_first_n_days_table
+)
 
 
 def generate_synthetic_data(n_days: int = 365, seed: int = 42):
@@ -273,17 +264,8 @@ def compare_all_models():
     print("-" * 80)
 
     for model_name, result in results.items():
-        Q = result['Q']
-        total_Q = np.sum(Q)
-        runoff_coef = total_Q / np.sum(P)
-        peak_Q = np.max(Q)
-        mean_Q = np.mean(Q)
-        nse = calculate_nse(observed_Q, Q)
-        rmse = calculate_rmse(observed_Q, Q)
-        pbias = calculate_pbias(observed_Q, Q)
-
-        print("{:<20} {:<15.2f} {:<15.3f} {:<15.2f} {:<15.2f} {:<12.3f} {:<12.2f} {:<12.2f}".format(
-            model_name, total_Q, runoff_coef, peak_Q, mean_Q, nse, rmse, pbias))
+        summary_line = format_model_summary(model_name, result, P, ET, observed_Q)
+        print(summary_line)
 
     print("\n" + "=" * 80)
 
@@ -370,8 +352,8 @@ def create_model_comparison_plots(P, ET, observed_Q, results, save_dir="figures"
     
     for model_name, result in results.items():
         Q = result['Q']
-        nse_values.append(calculate_nse(observed_Q, Q))
-        rmse_values.append(calculate_rmse(observed_Q, Q))
+        nse_values.append(nash_sutcliffe_efficiency(observed_Q, Q))
+        rmse_values.append(root_mean_squared_error(observed_Q, Q))
         runoff_coeffs.append(np.sum(Q) / np.sum(P))
         total_discharges.append(np.sum(Q))
 
@@ -452,8 +434,8 @@ def create_model_comparison_plots(P, ET, observed_Q, results, save_dir="figures"
         # Fill area between curves / 填充曲线间区域
         axes[i].fill_between(dates, observed_Q, Q_sim, alpha=0.2, color=colors_extended[i % len(colors_extended)])
         
-        nse = calculate_nse(observed_Q, Q_sim)
-        rmse = calculate_rmse(observed_Q, Q_sim)
+        nse = nash_sutcliffe_efficiency(observed_Q, Q_sim)
+        rmse = root_mean_squared_error(observed_Q, Q_sim)
         
         axes[i].set_ylabel('Discharge\n(mm/day)', fontweight='bold')
         axes[i].set_title(f'{model_name} - NSE: {nse:.3f}, RMSE: {rmse:.3f}', fontweight='bold')
@@ -919,16 +901,8 @@ def run_all_models_with_hourly(years: int = 2,
         "NSE", "RMSE", "PBIAS"))
     print("-" * 80)
     for name, res in results.items():
-        Q = res['Q']
-        total_Q = float(np.sum(Q))
-        runoff_coef = float(np.sum(Q) / (np.sum(P_d) + 1e-9))
-        peak_Q = float(np.max(Q))
-        mean_Q = float(np.mean(Q))
-        nse = calculate_nse(observed_Q, Q)
-        rmse = calculate_rmse(observed_Q, Q)
-        pbias = calculate_pbias(observed_Q, Q)
-        print("{:<20} {:<15.2f} {:<15.3f} {:<15.2f} {:<15.2f} {:<12.3f} {:<12.2f} {:<12.2f}".format(
-            name, total_Q, runoff_coef, peak_Q, mean_Q, nse, rmse, pbias))
+        summary_line = format_model_summary(name, res, P_d, PET_d, observed_Q)
+        print(summary_line)
 
     # Reuse existing comparison plots pipeline
     try:
