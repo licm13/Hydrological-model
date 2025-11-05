@@ -15,12 +15,48 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch, Rectangle, Circle, Polygon
 from matplotlib.patches import ConnectionPatch
+from matplotlib.lines import Line2D
 import numpy as np
 import os
+import matplotlib.font_manager as fm
 
-# Configure matplotlib for Chinese font display
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
-plt.rcParams['axes.unicode_minus'] = False
+def _pick_cjk_font():
+        """Pick a best-available CJK-capable sans-serif font installed on the system."""
+        preferred = [
+                # Simplified Chinese first
+                'Microsoft YaHei', 'Microsoft YaHei UI', 'SimHei',
+                'Noto Sans CJK SC', 'Source Han Sans CN', 'WenQuanYi Zen Hei', 'Sarasa UI SC',
+                # Japanese as fallback for mixed content like タンク
+                'Noto Sans CJK JP', 'Meiryo', 'Yu Gothic', 'MS Gothic',
+                # Pan-Unicode fallbacks
+                'Arial Unicode MS', 'DejaVu Sans'
+        ]
+        available = {f.name for f in fm.fontManager.ttflist}
+        for name in preferred:
+                if name in available:
+                        return name
+        return 'DejaVu Sans'
+
+
+def configure_cjk_fonts():
+    """Configure matplotlib to render Chinese/Japanese text and minus signs correctly."""
+    chosen = _pick_cjk_font()
+    # Put chosen first, then add symbol-capable fallbacks to cover checkmarks, etc.
+    plt.rcParams['font.sans-serif'] = [
+        chosen,
+        'Segoe UI Symbol',
+        'Noto Sans Symbols',
+        'Noto Sans CJK SC',
+        'SimHei',
+        'Arial Unicode MS',
+        'DejaVu Sans'
+    ]
+    # Ensure minus signs display properly when using CJK fonts
+    plt.rcParams['axes.unicode_minus'] = False
+
+
+# Apply font configuration early
+configure_cjk_fonts()
 
 
 def create_hbv_flowchart(save_dir='figures'):
@@ -191,7 +227,7 @@ def create_hbv_flowchart(save_dir='figures'):
     ax.add_patch(param_box)
     ax.text(1.45, 3.5, 'Key Parameters\n关键参数', ha='center', va='top',
             fontsize=9, fontweight='bold')
-    
+
     params_text = """Snow / 积雪:
 TT, CFMAX, CWH
 
@@ -204,8 +240,9 @@ K0, K1, K2
 
 Routing / 汇流:
 MAXBAS"""
-    
-    ax.text(1.45, 3, params_text, ha='center', va='top', fontsize=7, family='monospace')
+
+    # Avoid forcing monospace which often lacks CJK glyphs
+    ax.text(1.45, 3, params_text, ha='center', va='top', fontsize=7)
     
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'hbv_model_flowchart.png'), dpi=300, bbox_inches='tight')
@@ -379,7 +416,7 @@ def create_xinanjiang_flowchart(save_dir='figures'):
     ax.add_patch(param_box)
     ax.text(1.2, 4, 'Key Parameters\n关键参数', ha='center', va='top',
             fontsize=9, fontweight='bold')
-    
+
     params_text = """Evaporation / 蒸发:
 K, C
 
@@ -393,29 +430,30 @@ SM, EX, IMP
 Routing / 汇流:
 KI, KG
 CI, CG"""
-    
-    ax.text(1.2, 3.5, params_text, ha='center', va='top', fontsize=7, family='monospace')
-    
+
+    # Avoid forcing monospace which often lacks CJK glyphs
+    ax.text(1.2, 3.5, params_text, ha='center', va='top', fontsize=7)
+
     # Model Feature Box
     feature_box = FancyBboxPatch((8.2, 0.2), 1.6, 3, boxstyle="round,pad=0.1",
                                   edgecolor='darkgreen', facecolor='lightgreen', linewidth=2)
     ax.add_patch(feature_box)
     ax.text(9, 3, 'Model Type\n模型类型', ha='center', va='top',
             fontsize=9, fontweight='bold')
-    
-    features_text = """✓ Saturation
+
+    features_text = """• Saturation
   Excess / 蓄满
   产流
 
-✓ Humid
+• Humid
   Regions / 湿
   润地区
 
-✓ Conceptual
+• Conceptual
   概念性"""
-    
+
     ax.text(9, 2.5, features_text, ha='center', va='top', fontsize=7)
-    
+
     plt.tight_layout()
     plt.savefig(os.path.join(save_dir, 'xinanjiang_model_flowchart.png'), dpi=300, bbox_inches='tight')
     plt.close()
@@ -460,9 +498,9 @@ def create_water_cycle_diagram(save_dir='figures'):
             fontsize=10, fontweight='bold', color='blue')
     ax.text(11, 6.2, 'Precipitation\n降水 (P)', ha='center', va='top',
             fontsize=10, fontweight='bold', color='blue')
-    
+
     # Land surface
-    land_line = plt.Line2D([0.5, 13.5], [5, 5], color='brown', linewidth=3)
+    land_line = Line2D([0.5, 13.5], [5, 5], color='brown', linewidth=3)
     ax.add_line(land_line)
     
     # Vegetation/Interception
