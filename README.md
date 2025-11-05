@@ -96,6 +96,23 @@ python sacramento_model.py
 
 Each model generates comprehensive visualizations in the `figures/` directory.
 
+### Interactive Teaching Notebook
+
+For an interactive learning experience, explore the Jupyter notebook:
+
+```bash
+# Open the teaching quickstart notebook
+jupyter notebook notebooks/teaching_quickstart.ipynb
+```
+
+This notebook provides:
+* Step-by-step demonstrations of HBV and SCS-CN+UH models
+* Visualizations of model behavior and outputs
+* Land use scenario comparisons
+* Bilingual explanations (English/中文)
+
+The notebook uses the teaching dataset (`data/example_teaching_dataset.csv`) which contains 98 days of hydrological data including precipitation, temperature, PET, and observed flow.
+
 ### Advanced Example: Calibration and Validation
 
 This is the core of practical hydrological modeling. We will use a sample dataset to calibrate the GR4J model.
@@ -118,18 +135,22 @@ This script will:
 ```
 Hydrological-model/
 ├── data/
-│   └── sample_data.csv       # Sample real-world data / 真实数据样例
-├── figures/                   # Output figures directory / 输出图表目录
-├── README.md                 # This file / 本文件
-├── requirements.txt          # Python dependencies / Python依赖
-├── xinanjiang_model.py       # Xinanjiang model / 新安江模型
-├── tank_model.py             # Tank model / Tank模型
-├── gr4j_model.py             # GR4J model / GR4J模型
-├── sacramento_model.py       # Sacramento model / Sacramento模型
-├── hbv_model.py              # HBV model (NEW) / HBV模型(新增)
-├── event_model_scs_uh.py     # SCS-CN + UH event model (NEW) / SCS-CN + 单位线事件模型(新增)
-├── examples.py               # Examples with synthetic data / 基于虚拟数据的示例
-└── calibration_example.py    # Calibration with real data / 基于真实数据的率定与验证
+│   ├── sample_data.csv               # Sample real-world data / 真实数据样例
+│   ├── hourly_forcings.csv           # Hourly meteorological data / 小时气象数据
+│   └── example_teaching_dataset.csv  # Teaching dataset (NEW) / 教学数据集(新增)
+├── notebooks/
+│   └── teaching_quickstart.ipynb     # Teaching notebook (NEW) / 教学笔记本(新增)
+├── figures/                           # Output figures directory / 输出图表目录
+├── README.md                         # This file / 本文件
+├── requirements.txt                  # Python dependencies / Python依赖
+├── xinanjiang_model.py               # Xinanjiang model / 新安江模型
+├── tank_model.py                     # Tank model / Tank模型
+├── gr4j_model.py                     # GR4J model / GR4J模型
+├── sacramento_model.py               # Sacramento model / Sacramento模型
+├── hbv_model.py                      # HBV model (NEW) / HBV模型(新增)
+├── event_model_scs_uh.py             # SCS-CN + UH event model (NEW) / SCS-CN + 单位线事件模型(新增)
+├── examples.py                       # Examples with synthetic data / 基于虚拟数据的示例
+└── calibration_example.py            # Calibration with real data / 基于真实数据的率定与验证
 ```
 
 ### For Your Assignment
@@ -232,6 +253,23 @@ python sacramento_model.py
 
 每个模型在`figures/`目录中生成综合可视化图表。
 
+### 交互式教学笔记本
+
+获得交互式学习体验，请探索Jupyter笔记本：
+
+```bash
+# 打开教学快速入门笔记本
+jupyter notebook notebooks/teaching_quickstart.ipynb
+```
+
+此笔记本提供：
+* HBV和SCS-CN+UH模型的分步演示
+* 模型行为和输出的可视化
+* 土地利用情景比较
+* 双语解释（英文/中文）
+
+笔记本使用教学数据集（`data/example_teaching_dataset.csv`），其中包含98天的水文数据，包括降水、温度、PET和观测流量。
+
 ### 进阶案例：参数率定与验证
 
 这是应用水文模型最核心的环节。我们将使用一个案例数据集来率定GR4J模型。
@@ -254,15 +292,22 @@ python sacramento_model.py
 ```
 Hydrological-model/
 ├── data/
-│   └── sample_data.csv       # 真实数据样例
-├── README.md                 # 本文件
-├── requirements.txt          # Python依赖
-├── xinanjiang_model.py       # 新安江模型
-├── tank_model.py             # Tank模型
-├── gr4j_model.py             # GR4J模型
-├── sacramento_model.py       # Sacramento模型
-├── examples.py               # 基于虚拟数据的示例
-└── calibration_example.py    # 基于真实数据的率定与验证
+│   ├── sample_data.csv               # 真实数据样例
+│   ├── hourly_forcings.csv           # 小时气象数据
+│   └── example_teaching_dataset.csv  # 教学数据集(新增)
+├── notebooks/
+│   └── teaching_quickstart.ipynb     # 教学笔记本(新增)
+├── figures/                           # 输出图表目录
+├── README.md                         # 本文件
+├── requirements.txt                  # Python依赖
+├── xinanjiang_model.py               # 新安江模型
+├── tank_model.py                     # Tank模型
+├── gr4j_model.py                     # GR4J模型
+├── sacramento_model.py               # Sacramento模型
+├── hbv_model.py                      # HBV模型(新增)
+├── event_model_scs_uh.py             # SCS-CN + 单位线事件模型(新增)
+├── examples.py                       # 基于虚拟数据的示例
+└── calibration_example.py            # 基于真实数据的率定与验证
 ```
 
 ### 课后思考与练习
