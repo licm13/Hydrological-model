@@ -179,7 +179,7 @@ def run_event_sensitivity(cn_values: Sequence[int] = (55, 70, 85, 95)) -> Dict[i
     for cn in cn_values:
         model = EventModel(CN=cn, AMC='II', Tp=3.0, dt=dt)
         results = model.run(P)
-        scenario_results[int(cn)] = results
+        scenario_results[cn] = results
 
     return scenario_results
 
