@@ -19,12 +19,12 @@ Date: 2025-11-04
 """
 
 import numpy as np
-import sys
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import seaborn as sns
 import os
 from datetime import datetime, timedelta
+from typing import Dict, Optional, Sequence, TYPE_CHECKING
 
 # Configure matplotlib for Chinese font display / 配置matplotlib以显示中文
 plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi', 'DejaVu Sans']
@@ -37,6 +37,10 @@ from gr4j_model import GR4J
 from sacramento_model import SacramentoModel
 from hbv_model import HBVModel
 from event_model_scs_uh import EventModel, create_event_plots
+from topmodel import Topmodel
+
+if TYPE_CHECKING:  # pragma: no cover - import only for type checking
+    from ml_benchmark import RandomForestBenchmarkResult
 # Note: event_model_scs_uh requires hourly data and is event-based (see separate usage)
 # 注意: event_model_scs_uh需要小时数据，是基于事件的(参见单独使用说明)
 
@@ -54,14 +58,17 @@ from utils.reporting import (
 )
 
 
-def generate_synthetic_data(n_days: int = 365, seed: int = 42):
+def generate_synthetic_data(n_days: int = 365, seed: int = 42, climate: str = "baseline") -> Dict[str, np.ndarray]:
     """
     Generate synthetic hydrological data for testing.
     生成用于测试的合成水文数据。
     
-    This function creates realistic precipitation, evapotranspiration, and
-    temperature time series that can be used as input for hydrological models.
-    此函数创建可用作水文模型输入的真实降水、蒸散发和温度时间序列。
+This function creates realistic precipitation, evapotranspiration, and
+temperature time series that can be used as input for hydrological models.
+The ``climate`` argument enables quick experiments with arid and humid
+catchments for classroom demonstrations.
+此函数创建可用作水文模型输入的真实降水、蒸散发和温度时间序列，并可通过
+``climate`` 参数快速构建干旱或湿润流域情景以用于教学。
     
     Parameters / 参数:
     -----------
@@ -70,42 +77,111 @@ def generate_synthetic_data(n_days: int = 365, seed: int = 42):
     seed : int
         Random seed for reproducibility / 用于可重复性的随机种子
         
+    climate : str
+        Scenario flag. Supported values: ``"baseline"``, ``"arid"``, ``"humid"``.
+        场景标记，可选：``"baseline"``、``"arid"``、``"humid"``。
+
     Returns / 返回:
     --------
     dict : Dictionary containing P (precipitation), ET (evapotranspiration), and T (temperature)
            包含P(降水)、ET(蒸散发)和T(温度)的字典
     """
-    np.random.seed(seed)
-    
-    # Precipitation: Gamma distribution with intermittent rain
-    # 降水：具有间歇性降雨的伽马分布
-    # Typical pattern: some days with heavy rain, many dry days
-    # 典型模式：一些大雨天，许多干旱天
-    P = np.random.gamma(2, 5, n_days)
-    dry_days = np.random.rand(n_days) > 0.4  # 60% of days are dry / 60%的天数是干旱的
-    P[dry_days] = 0
-    
-    # Potential Evapotranspiration: Seasonal sinusoidal pattern
-    # 潜在蒸散发：季节性正弦模式
-    # Higher in summer, lower in winter / 夏季较高，冬季较低
+    climate = climate.lower()
+    rng = np.random.default_rng(seed)
+
+    climate_settings = {
+        "baseline": {"precip_scale": 1.0, "dry_fraction": 0.6, "pet_multiplier": 1.0, "temp_shift": 0.0},
+        "arid": {"precip_scale": 0.45, "dry_fraction": 0.8, "pet_multiplier": 1.25, "temp_shift": 2.0},
+        "humid": {"precip_scale": 1.35, "dry_fraction": 0.35, "pet_multiplier": 0.85, "temp_shift": -1.0},
+    }
+    settings = climate_settings.get(climate, climate_settings["baseline"])
+
+    # Precipitation generation
+    base_precip = rng.gamma(shape=2.0, scale=5.0, size=n_days)
+    dry_mask = rng.random(n_days) < settings["dry_fraction"]
+    base_precip[dry_mask] = 0.0
+    P = base_precip * settings["precip_scale"]
+
+    # Potential evapotranspiration with seasonal modulation
     t = np.arange(n_days)
-    ET = 3.0 + 2.0 * np.sin(2 * np.pi * t / 365 - np.pi / 2)  # Peak in day 91 (summer) / 第91天达到峰值(夏季)
-    ET = np.maximum(ET, 0.5)  # Minimum 0.5 mm/day / 最小0.5 mm/天
-    
-    # Temperature: Seasonal cycle with daily variation
-    # 温度：具有日变化的季节周期
-    # For models like HBV that require temperature
-    # 用于像HBV这样需要温度的模型
-    T_mean = 10.0  # Annual mean temperature / 年平均温度 (°C)
-    T_amplitude = 10.0  # Seasonal amplitude / 季节振幅 (°C)
-    T = T_mean + T_amplitude * np.sin(2 * np.pi * t / 365 - np.pi / 2) + np.random.normal(0, 2, n_days)
-    
+    ET = 3.0 + 2.0 * np.sin(2 * np.pi * t / 365 - np.pi / 2)
+    ET = np.maximum(ET, 0.5) * settings["pet_multiplier"]
+
+    # Temperature signal, shifted to reflect the scenario
+    T_mean = 10.0 + settings["temp_shift"]
+    T_amplitude = 10.0
+    T = T_mean + T_amplitude * np.sin(2 * np.pi * t / 365 - np.pi / 2) + rng.normal(0, 2, n_days)
+
     return {
         'P': P,
         'ET': ET,
         'T': T,  # Temperature for HBV model / HBV模型的温度
         'days': n_days
     }
+
+
+def generate_extreme_event_data(
+    n_days: int = 180,
+    drought_length: int = 90,
+    storm_depth: float = 160.0,
+    seed: int = 42,
+) -> Dict[str, np.ndarray]:
+    """Create a drought-then-deluge forcing sequence for classroom demos."""
+
+    data = generate_synthetic_data(n_days=n_days, seed=seed, climate="baseline")
+    P = np.zeros(n_days, dtype=float)
+    ET = np.full(n_days, data['ET'].mean() * 1.2, dtype=float)
+    T = data['T'] + 1.5
+
+    drought_days = min(drought_length, n_days - 5)
+    rng = np.random.default_rng(seed + 1)
+    P[:drought_days] = rng.uniform(0.0, 0.3, size=drought_days)
+    ET[:drought_days] *= 1.1
+
+    storm_duration = min(6, n_days - drought_days)
+    hyetograph = np.array([0.05, 0.1, 0.2, 0.25, 0.2, 0.2])[:storm_duration]
+    hyetograph = hyetograph / hyetograph.sum()
+    P[drought_days:drought_days + storm_duration] = hyetograph * storm_depth
+
+    recovery_start = drought_days + storm_duration
+    ET[recovery_start:] = data['ET'][recovery_start:] * 0.8
+    T[recovery_start:] = data['T'][recovery_start:] - 1.0
+
+    return {'P': P, 'ET': ET, 'T': T, 'days': n_days}
+
+
+def apply_linear_reservoir_filter(flow: np.ndarray, residence_time: float) -> np.ndarray:
+    """Apply a simple linear reservoir routing to mimic upstream storage."""
+
+    if residence_time <= 0:
+        raise ValueError("Residence time must be positive.")
+
+    flow = np.asarray(flow, dtype=float)
+    routed = np.zeros_like(flow)
+    routed[0] = flow[0]
+    coefficient = 1.0 / residence_time
+
+    for idx in range(1, flow.size):
+        routed[idx] = routed[idx - 1] + coefficient * (flow[idx] - routed[idx - 1])
+
+    return routed
+
+
+def run_event_sensitivity(cn_values: Sequence[int] = (55, 70, 85, 95)) -> Dict[int, Dict[str, np.ndarray]]:
+    """Generate runoff hydrographs for multiple land-use CN scenarios."""
+
+    dt = 1.0
+    duration_hours = 24
+    P = np.zeros(duration_hours)
+    P[5:10] = [5, 15, 25, 15, 5]
+    scenario_results: Dict[int, Dict[str, np.ndarray]] = {}
+
+    for cn in cn_values:
+        model = EventModel(CN=cn, AMC='II', Tp=3.0, dt=dt)
+        results = model.run(P)
+        scenario_results[int(cn)] = results
+
+    return scenario_results
 
 
 def real_world_data_structure():
@@ -160,44 +236,55 @@ def real_world_data_structure():
     print("\n" + "=" * 80)
 
 
-def compare_all_models():
-    """
-    Compare all hydrological models with the same input data.
-    使用相同的输入数据比较所有水文模型。
-    
-    This function runs all available continuous hydrological models and
-    compares their performance with the same synthetic data.
-    此函数运行所有可用的连续水文模型，并使用相同的合成数据比较它们的性能。
-    
-    Note: Event-based models (SCS-CN+UH) require different data structure
-    and are demonstrated separately.
-    注意：基于事件的模型(SCS-CN+UH)需要不同的数据结构，单独演示。
-    """
+def compare_all_models(
+    n_days: int = 365,
+    scenario: str = "baseline",
+    include_ml: bool = True,
+    include_topmodel: bool = True,
+    reservoir_residence_time: Optional[float] = None,
+    seed: int = 42,
+) -> Dict[str, Dict[str, np.ndarray]]:
+    """Compare the continuous models (and optional ML baseline) on one dataset."""
+
     print("=" * 80)
     print("Comparing All Hydrological Models / 比较所有水文模型")
     print("=" * 80)
-    
-    # Generate common input data / 生成通用输入数据
-    data = generate_synthetic_data(n_days=365, seed=42)
+
+    scenario_key = scenario.lower()
+    if scenario_key == "extreme_event":
+        data = generate_extreme_event_data(n_days=n_days, seed=seed)
+        print("Using drought → deluge extreme event forcing.")
+    else:
+        data = generate_synthetic_data(n_days=n_days, seed=seed, climate=scenario_key)
+        print(f"Using {scenario_key} climate scenario forcings.")
+
     P = data['P']
     ET = data['ET']
-    T = data['T']  # Temperature for HBV / HBV的温度
-    
+    T = data['T']
+
     print(f"\nInput Data / 输入数据: {data['days']} days / 天")
     print(f"Total Precipitation / 总降水: {np.sum(P):.2f} mm")
     print(f"Total Potential ET / 总潜在蒸散发: {np.sum(ET):.2f} mm")
     print(f"Average Daily P / 平均日降水: {np.mean(P):.2f} mm")
     print(f"Average Daily ET / 平均日蒸散发: {np.mean(ET):.2f} mm")
     print(f"Average Temperature / 平均温度: {np.mean(T):.2f} °C")
-    
-    results = {}
 
-    # 1. Xinanjiang Model / 新安江模型
+    results: Dict[str, Dict[str, np.ndarray]] = {}
+
+    xaj_kwargs: Dict[str, float] = {}
+    hbv_kwargs: Dict[str, float] = {}
+    if scenario_key == "arid":
+        xaj_kwargs.update({"WM": 110.0, "SM": 18.0, "K": 1.1})
+        hbv_kwargs.update({"FC": 160.0, "BETA": 1.6, "LP": 0.85})
+    elif scenario_key == "humid":
+        xaj_kwargs.update({"WM": 220.0, "SM": 45.0, "K": 0.9})
+        hbv_kwargs.update({"FC": 320.0, "BETA": 2.6, "LP": 0.6})
+
     print("\n" + "-" * 80)
     print("1. Running Xinanjiang Model / 运行新安江模型...")
-    xaj = XinanjiangModel()
+    xaj = XinanjiangModel(**xaj_kwargs)
     results['Xinanjiang'] = xaj.run(P, ET)
-    rng = np.random.default_rng(123)
+    rng = np.random.default_rng(seed + 100)
     observed_Q = np.clip(
         results['Xinanjiang']['Q'] + rng.normal(0.0, 0.5, size=len(P)),
         a_min=0.0,
@@ -205,56 +292,59 @@ def compare_all_models():
     )
     print(f"   Total discharge / 总径流: {np.sum(results['Xinanjiang']['Q']):.2f} mm")
     print(f"   Runoff coefficient / 径流系数: {np.sum(results['Xinanjiang']['Q'])/np.sum(P):.3f}")
-    
-    # 2. Tank Model 1D / Tank模型1D
+
     print("\n" + "-" * 80)
     print("2. Running Tank Model 1D / 运行Tank模型1D...")
     tank1d = TankModel1D()
     results['Tank_1D'] = tank1d.run(P, ET)
-    print(f"   Total discharge / 总径流: {np.sum(results['Tank_1D']['Q']):.2f} mm")
-    print(f"   Runoff coefficient / 径流系数: {np.sum(results['Tank_1D']['Q'])/np.sum(P):.3f}")
-    
-    # 3. Tank Model 2D / Tank模型2D
+
     print("\n" + "-" * 80)
     print("3. Running Tank Model 2D / 运行Tank模型2D...")
     tank2d = TankModel2D()
     results['Tank_2D'] = tank2d.run(P, ET)
-    print(f"   Total discharge / 总径流: {np.sum(results['Tank_2D']['Q']):.2f} mm")
-    print(f"   Runoff coefficient / 径流系数: {np.sum(results['Tank_2D']['Q'])/np.sum(P):.3f}")
-    
-    # 4. Tank Model 3D / Tank模型3D
+
     print("\n" + "-" * 80)
     print("4. Running Tank Model 3D / 运行Tank模型3D...")
     tank3d = TankModel3D()
     results['Tank_3D'] = tank3d.run(P, ET)
-    print(f"   Total discharge / 总径流: {np.sum(results['Tank_3D']['Q']):.2f} mm")
-    print(f"   Runoff coefficient / 径流系数: {np.sum(results['Tank_3D']['Q'])/np.sum(P):.3f}")
-    
-    # 5. GR4J Model / GR4J模型
+
     print("\n" + "-" * 80)
     print("5. Running GR4J Model / 运行GR4J模型...")
     gr4j = GR4J()
     results['GR4J'] = gr4j.run(P, ET)
-    print(f"   Total discharge / 总径流: {np.sum(results['GR4J']['Q']):.2f} mm")
-    print(f"   Runoff coefficient / 径流系数: {np.sum(results['GR4J']['Q'])/np.sum(P):.3f}")
-    
-    # 6. Sacramento Model / Sacramento模型
+
     print("\n" + "-" * 80)
     print("6. Running Sacramento Model / 运行Sacramento模型...")
     sac = SacramentoModel()
     results['Sacramento'] = sac.run(P, ET)
-    print(f"   Total discharge / 总径流: {np.sum(results['Sacramento']['Q']):.2f} mm")
-    print(f"   Runoff coefficient / 径流系数: {np.sum(results['Sacramento']['Q'])/np.sum(P):.3f}")
-    
-    # 7. HBV Model / HBV模型
+
     print("\n" + "-" * 80)
     print("7. Running HBV Model / 运行HBV模型...")
-    hbv = HBVModel()
-    results['HBV'] = hbv.run(P, T, ET)  # HBV需要温度 / HBV requires temperature
-    print(f"   Total discharge / 总径流: {np.sum(results['HBV']['Q']):.2f} mm")
-    print(f"   Runoff coefficient / 径流系数: {np.sum(results['HBV']['Q'])/np.sum(P):.3f}")
-    
-    # Comparison Table / 比较表
+    hbv = HBVModel(**hbv_kwargs)
+    results['HBV'] = hbv.run(P, T, ET)
+
+    if include_topmodel:
+        print("\n" + "-" * 80)
+        print("8. Running TOPMODEL-inspired benchmark / 运行TOPMODEL基准...")
+        topmodel = Topmodel()
+        results['TOPMODEL'] = topmodel.run(P, ET)
+
+    if include_ml:
+        print("\n" + "-" * 80)
+        print("9. Training Random Forest benchmark / 训练随机森林基准...")
+        from ml_benchmark import run_random_forest_benchmark
+        ml_result = run_random_forest_benchmark(P, ET, observed_Q)
+        results['RandomForest'] = {'Q': ml_result.full_series}
+        print(f"   Validation metrics: {ml_result.metrics}")
+
+    if reservoir_residence_time is not None:
+        print("\nApplying linear reservoir routing to illustrate storage effects...")
+        routed_results: Dict[str, Dict[str, np.ndarray]] = {}
+        for name, res in results.items():
+            routed = apply_linear_reservoir_filter(res['Q'], residence_time=reservoir_residence_time)
+            routed_results[f"{name}_Reservoir"] = {**res, 'Q': routed}
+        results.update(routed_results)
+
     print("\n" + "=" * 80)
     print("Model Comparison Summary / 模型比较摘要")
     print("=" * 80)
@@ -269,7 +359,6 @@ def compare_all_models():
 
     print("\n" + "=" * 80)
 
-    # Enhanced comprehensive visualization / 增强的综合可视化
     create_model_comparison_plots(P, ET, observed_Q, results, save_dir="figures")
 
     return results

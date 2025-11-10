@@ -78,6 +78,18 @@ This repository is designed as a teaching tool for 3rd-year hydraulic engineerin
 - **Best for**: Storm event analysis and design flood estimation.
 - **Features**: SCS Curve Number method for runoff estimation, unit hydrograph for routing, antecedent moisture condition adjustments.
 
+#### 7. **TOPMODEL-inspired Benchmark**
+
+- **Type**: Conceptual, terrain-index-driven saturation excess.
+- **Best for**: Demonstrating the role of topography in runoff production.
+- **Features**: Spatially distributed saturation deficit, exponential transmissivity decay, complementary perspective to soil-moisture-based models.
+
+#### 8. **Random Forest ML Baseline**
+
+- **Type**: Data-driven ensemble regression.
+- **Best for**: Benchmarking against conceptual models using the same forcings.
+- **Features**: Uses rainfall and antecedent flow lags as predictors, reports NSE/RMSE/PBIAS alongside conceptual model outputs.
+
 ### Installation
 
 ```bash
@@ -96,6 +108,18 @@ First, run the examples with synthetic data to understand model behavior.
 ```bash
 # This script compares all continuous models under various scenarios
 python examples.py
+
+# Try alternative catchment stories
+python - <<'PY'
+from examples import compare_all_models
+
+# Humid vs. arid climates
+compare_all_models(scenario="humid")
+compare_all_models(scenario="arid")
+
+# Drought followed by extreme rainfall with ML benchmark disabled
+compare_all_models(scenario="extreme_event", include_ml=False, reservoir_residence_time=5.0)
+PY
 ```
 
 This will demonstrate model comparison, sensitivity analysis, and storm event simulation.

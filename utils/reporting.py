@@ -142,17 +142,27 @@ def format_model_summary(
         return f"{name:<20} {'N/A':<15} {'N/A':<15} {'N/A':<15} {'N/A':<15} {'N/A':<12} {'N/A':<12} {'N/A':<12}"
 
     # Calculate basic statistics
-    total_Q = float(np.sum(Q))
+    total_Q = float(np.nansum(Q))
     total_P = float(np.sum(precipitation))
     runoff_coef = total_Q / total_P if total_P > 0 else np.nan
-    peak_Q = float(np.max(Q))
-    mean_Q = float(np.mean(Q))
+    if np.all(np.isnan(Q)):
+        peak_Q = float('nan')
+        mean_Q = float('nan')
+    else:
+        peak_Q = float(np.nanmax(Q))
+        mean_Q = float(np.nanmean(Q))
 
     # Calculate performance metrics if observed flow is provided
     if observed_flow is not None and observed_flow.size > 0:
-        nse = nash_sutcliffe_efficiency(observed_flow, Q)
-        rmse = root_mean_squared_error(observed_flow, Q)
-        pbias = percent_bias(observed_flow, Q)
+        mask = ~np.isnan(observed_flow) & ~np.isnan(Q)
+        if np.any(mask):
+            nse = nash_sutcliffe_efficiency(observed_flow[mask], Q[mask])
+            rmse = root_mean_squared_error(observed_flow[mask], Q[mask])
+            pbias = percent_bias(observed_flow[mask], Q[mask])
+        else:
+            nse = np.nan
+            rmse = np.nan
+            pbias = np.nan
     else:
         nse = np.nan
         rmse = np.nan

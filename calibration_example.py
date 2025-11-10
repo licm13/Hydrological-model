@@ -16,23 +16,7 @@ plt.rcParams['font.sans-serif'] = ['Microsoft YaHei', 'SimHei', 'STSong', 'KaiTi
 plt.rcParams['axes.unicode_minus'] = False  # Fix minus sign display / 修复负号显示
 
 from gr4j_model import GR4J
-
-
-def calculate_nse(observed: np.ndarray, simulated: np.ndarray) -> float:
-    """Calculate Nash-Sutcliffe Efficiency between observed and simulated data."""
-    observed = np.asarray(observed, dtype=float)
-    simulated = np.asarray(simulated, dtype=float)
-
-    if observed.size == 0:
-        raise ValueError("Observed series is empty.")
-
-    denominator = np.sum((observed - np.mean(observed)) ** 2)
-    if denominator == 0:
-        return -np.inf
-
-    numerator = np.sum((observed - simulated) ** 2)
-    return 1.0 - numerator / denominator
-
+from utils.performance import nash_sutcliffe_efficiency
 
 def objective_function(params: np.ndarray, P: np.ndarray, E: np.ndarray, Q_obs: np.ndarray) -> float:
     """Objective function for GR4J calibration using NSE as the performance metric."""
@@ -45,7 +29,7 @@ def objective_function(params: np.ndarray, P: np.ndarray, E: np.ndarray, Q_obs: 
     simulation = model.run(P, E)
     Q_sim = simulation['Q']
 
-    nse = calculate_nse(Q_obs, Q_sim)
+    nse = nash_sutcliffe_efficiency(Q_obs, Q_sim)
     return 1.0 - nse
 
 
@@ -299,8 +283,8 @@ if __name__ == "__main__":
     Q_cal_sim = calibrated_model.run(P_cal, E_cal)['Q']
     Q_val_sim = calibrated_model.run(P_val, E_val)['Q']
 
-    nse_cal = calculate_nse(Q_cal, Q_cal_sim)
-    nse_val = calculate_nse(Q_val, Q_val_sim)
+    nse_cal = nash_sutcliffe_efficiency(Q_cal, Q_cal_sim)
+    nse_val = nash_sutcliffe_efficiency(Q_val, Q_val_sim)
 
     print("\nCalibration completed successfully!")
     print("=" * 60)
