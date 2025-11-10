@@ -37,7 +37,7 @@ from gr4j_model import GR4J
 from sacramento_model import SacramentoModel
 from hbv_model import HBVModel
 from event_model_scs_uh import EventModel, create_event_plots
-from topmodel import Topmodel
+from topmodel import Topmodel, create_topmodel_plots
 
 if TYPE_CHECKING:  # pragma: no cover - import only for type checking
     from ml_benchmark import RandomForestBenchmarkResult
@@ -328,6 +328,11 @@ def compare_all_models(
         print("8. Running TOPMODEL-inspired benchmark / 运行TOPMODEL基准...")
         topmodel = Topmodel()
         results['TOPMODEL'] = topmodel.run(P, ET)
+        
+        # Create TOPMODEL-specific plots
+        print("   Creating TOPMODEL analysis plots / 创建TOPMODEL分析图表...")
+        create_topmodel_plots(topmodel, P, ET, results['TOPMODEL'], 
+                             title_prefix="TOPMODEL", save_dir="figures")
 
     if include_ml:
         print("\n" + "-" * 80)
